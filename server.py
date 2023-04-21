@@ -1,11 +1,12 @@
 # Adapted from https://huggingface.co/docs/transformers/pipeline_webserver
 
 from starlette.applications import Starlette
-from starlette.responses import JSONResponse
+from starlette.responses import Response
 from starlette.routing import Route
-from transformers import pipeline
-import asyncio
 import torch
+import asyncio
+from io import BytesIO
+from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
 
 
 async def homepage(request):
@@ -14,16 +15,20 @@ async def homepage(request):
     response_q = asyncio.Queue()
     await request.app.model_queue.put((string, response_q))
     output = await response_q.get()
-    return JSONResponse(output)
+    return Response(output, media_type="image/jpeg")
 
 
 async def server_loop(q):
-    # See https://github.com/databrickslabs/dolly#generating-on-other-instances for notes on how to use the 12b model
-    pipe = pipeline(model="databricks/dolly-v2-7b", torch_dtype=torch.bfloat16, trust_remote_code=True, device_map="auto")
+    pipe = StableDiffusionPipeline.from_pretrained("stabilityai/stable-diffusion-2-1", torch_dtype=torch.bfloat16)
+    pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    pipe = pipe.to("cuda")
+
     while True:
         (string, response_q) = await q.get()
-        out = pipe(string)
-        await response_q.put(out)
+        out = pipe(string).images[0]
+        img_jpg = BytesIO()
+        out.save(img_jpg, format='JPEG')
+        await response_q.put(img_jpg.getvalue())
 
 def startup():
     q = asyncio.Queue()
