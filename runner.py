@@ -1,5 +1,5 @@
 # Databricks notebook source
-# MAGIC %pip install uvicorn starlette
+# MAGIC %pip install -U langchain transformers sqlalchemy databricks-sql-connector uvicorn starlette
 
 # COMMAND ----------
 

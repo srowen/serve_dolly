@@ -6,5 +6,15 @@ databricks_token = dbutils.notebook.entry_point.getDbutils().notebook().getConte
 response = requests.request(method='POST', \
                             headers={'Authorization': f'Bearer {databricks_token}'}, \
                             url="<paste generated endpoint here>", \
-                            data="Explain to me the difference between nuclear fission and fusion.")
-print(response.content)
+                            data="In `samples.nyctaxi`, find the maximum fare by pickup ZIP")
+sql = response.content.decode("unicode_escape").strip('"')
+print(sql)
+
+# COMMAND ----------
+
+spark.sql("USE samples.nyctaxi")
+display(spark.sql(sql))
+
+# COMMAND ----------
+
+
